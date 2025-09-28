@@ -13,12 +13,15 @@
     scroll-behavior:smooth; scroll-snap-type:y mandatory; overscroll-behavior-y:none;
   }
   .panel{ height:100vh; min-height:100dvh; display:flex; align-items:center; justify-content:center; padding:12px; box-sizing:border-box; scroll-snap-align:start; }
-  .player{ width:100%; max-width:1200px; margin:auto; position:relative; aspect-ratio:16/9; box-shadow:0 10px 30px rgba(0,0,0,.6); border-radius:12px; overflow:hidden; background:#111;}
+  .wrap{ width:100%; max-width:1200px; margin:auto; }
+  .player{ position:relative; width:100%; aspect-ratio:16/9; box-shadow:0 10px 30px rgba(0,0,0,.6); border-radius:12px; overflow:hidden; background:#111; }
   iframe{ width:100%; height:100%; border:0; display:block; }
-  .caption{ position:absolute; inset:auto 0 0 0; padding:8px 12px; font-size:14px; color:var(--muted); background:linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,.55) 60%, rgba(0,0,0,.8) 100%); }
+  /* label now OUTSIDE the video; never blocks controls */
+  .label{ margin-top:8px; font-size:14px; color:var(--muted); }
   .hint{ position:fixed; left:50%; transform:translateX(-50%); bottom:10px; font-size:12px; color:#bbb; opacity:.85; }
   .hidden{ display:none!important; }
   .noscript{ display:grid; place-items:center; min-height:100dvh; padding:24px; text-align:center; color:#bbb; }
+
   /* password modal */
   .gate{ position:fixed; inset:0; display:grid; place-items:center; background:rgba(0,0,0,0.88); z-index:9999;}
   .card{ width:calc(100% - 40px); max-width:420px; background:#0b0b0b; border-radius:10px; padding:18px; color:#eee; box-shadow:0 8px 30px rgba(0,0,0,.6); }
@@ -39,22 +42,21 @@
   <div id="root"></div>
   <div class="hint" id="hint">Scroll to move to the next video ▾</div>
 
-  <!-- Videos list: updated to the two shorts you provided -->
+  <!-- Videos list -->
   <script id="videos" type="application/json">[
-    { "url": "https://youtube.com/shorts/dIV0SyLqiVs", "title": "Vidéo 2" },
-    { "url": "https://youtu.be/wS4D4Z1_5LQ", "title": "Vidéo 2" },
-    { "url": "https://youtu.be/gAVs4er6kn0", "title": "Vidéo 2" },
-    { "url": "https://youtu.be/A8w2OR2xGj4", "title": "Vidéo 2" },
-    { "url": "https://youtu.be/hsFsDTObQAU", "title": "Vidéo 2" },
-    { "url": "https://youtube.com/shorts/t-opht7pIUI?feature=share", "title": "Vidéo 2" },
-    { "url": "https://youtube.com/shorts/cS82Yr76OAM?feature=share", "title": "Vidéo 2" },
-    { "url": "https://youtube.com/shorts/fhxjJ8h7fSk?feature=share", "title": "Vidéo 2" },
-    { "url": "https://youtube.com/shorts/T-evQX6mpp4", "title": "Vidéo 3" }
+    { "url": "https://youtube.com/shorts/dIV0SyLqiVs", "title": "1" },
+    { "url": "https://youtu.be/wS4D4Z1_5LQ", "title": "2" },
+    { "url": "https://youtu.be/gAVs4er6kn0", "title": "3" },
+    { "url": "https://youtu.be/A8w2OR2xGj4", "title": "4" },
+    { "url": "https://youtu.be/hsFsDTObQAU", "title": "5" },
+    { "url": "https://youtube.com/shorts/t-opht7pIUI?feature=share", "title": "6" },
+    { "url": "https://youtube.com/shorts/cS82Yr76OAM?feature=share", "title": "7" },
+    { "url": "https://youtube.com/shorts/fhxjJ8h7fSk?feature=share", "title": "8" },
+     { "url": "https://youtube.com/shorts/27keArNQ4wc?feature=share", "title": "9" },
+    { "url": "https://youtube.com/shorts/T-evQX6mpp4", "title": "end" }
   ]</script>
 
-  <!-- SIMPLE AUTH CONFIG (salted SHA-256). 
-       salt_base64url and reference_hex were generated for your password.
-       If you need to change the password, see comment at bottom for recompute snippet. -->
+  <!-- SIMPLE AUTH CONFIG (salted SHA-256) -->
   <script id="auth-config" type="application/json">
   {
     "salt_base64url":"X9LtQaHELAPK7FNW",
@@ -74,9 +76,7 @@
   </div>
 
 <script>
-/* Minimal salted-hash password check (SHA-256 of salt + password).
-   Simple and reliable cross-browser.
-*/
+/* Minimal salted-hash password check (SHA-256 of salt + password). */
 function b64urlToArrayBuffer(b64url){
   const b64 = b64url.replace(/-/g,'+').replace(/_/g,'/');
   const pad = b64.length % 4;
@@ -90,10 +90,8 @@ function bufToHex(buf){
   const u = new Uint8Array(buf);
   return Array.from(u).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-
 async function sha256OfSaltPlusPassword(saltBuf, password){
   const enc = new TextEncoder();
-  // concatenate salt || password
   const pwdBuf = enc.encode(password);
   const saltBytes = new Uint8Array(saltBuf);
   const concat = new Uint8Array(saltBytes.length + pwdBuf.length);
@@ -102,7 +100,6 @@ async function sha256OfSaltPlusPassword(saltBuf, password){
   const digest = await crypto.subtle.digest('SHA-256', concat.buffer);
   return bufToHex(digest);
 }
-
 async function verifyPassword(password, cfg){
   try{
     const saltBuf = b64urlToArrayBuffer(cfg.salt_base64url);
@@ -137,7 +134,6 @@ async function verifyPassword(password, cfg){
     }
   });
 
-  // skip if session already validated
   try{
     if(sessionStorage.getItem('yt_gate_ok') === '1'){ gate.style.display = 'none'; initPage(); }
   }catch(e){}
@@ -156,7 +152,6 @@ function initPage(){
       try{
         const u = new URL(entry.url);
         if(u.hostname.includes('youtu.be')) return u.pathname.slice(1);
-        // handle /shorts/<id>
         if(u.pathname && u.pathname.startsWith('/shorts/')){
           const parts = u.pathname.split('/');
           if(parts.length >= 3) return parts[2];
@@ -176,16 +171,28 @@ function initPage(){
 
   list.forEach((v, idx) => {
     const section = document.createElement('section'); section.className='panel';
+    const wrap = document.createElement('div'); wrap.className='wrap';
     const player = document.createElement('div'); player.className='player';
     const iframe = document.createElement('iframe');
     iframe.setAttribute('title', v.title || ('Video '+(idx+1)));
     iframe.setAttribute('allow','accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share');
     iframe.setAttribute('referrerpolicy','strict-origin-when-cross-origin');
     iframe.setAttribute('loading','lazy');
-    iframe.dataset.src = 'https://www.youtube.com/embed/' + encodeURIComponent(v.id) + '?rel=0&modestbranding=1&playsinline=1';
-    const caption = document.createElement('div'); caption.className='caption'; caption.textContent = v.title || '';
-    player.appendChild(iframe); player.appendChild(caption);
-    section.appendChild(player); root.appendChild(section);
+
+    // Captions/labels removed from overlay (no obstruction).
+    // Keep only for accessibility and optional below-player text.
+    iframe.dataset.src =
+      'https://www.youtube.com/embed/' + encodeURIComponent(v.id) +
+      '?rel=0&modestbranding=1&playsinline=1&controls=1&iv_load_policy=3';
+
+    player.appendChild(iframe);
+    const label = document.createElement('div');
+    label.className = 'label';
+    label.textContent = v.title || '';
+    wrap.appendChild(player);
+    if(label.textContent.trim()) wrap.appendChild(label);
+    section.appendChild(wrap);
+    root.appendChild(section);
   });
 
   const io = ('IntersectionObserver' in window) ? new IntersectionObserver(entries=>{
