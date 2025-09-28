@@ -1,227 +1,221 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Vidéos protégées</title>
-  <style>
-    :root { --bg:#000; --fg:#fff; --muted:#999; }
-    html,body{ height:100%; }
-    body{
-      margin:0; background:var(--bg); color:var(--fg);
-      font-family: system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;
-      scroll-behavior:smooth;
-      scroll-snap-type: y mandatory;
-      overscroll-behavior-y: none;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-    }
-    .panel{
-      height:100vh; min-height:100dvh;
-      display:flex; align-items:center; justify-content:center;
-      padding: 12px; box-sizing:border-box;
-      scroll-snap-align:start;
-    }
-    .player{
-      width:100%; max-width:1200px; margin:auto; position:relative;
-      aspect-ratio:16/9;
-      box-shadow: 0 10px 30px rgba(0,0,0,.6);
-      border-radius:16px; overflow:hidden; background:#111;
-    }
-    iframe{ width:100%; height:100%; border:0; display:block; }
-    .caption{
-      position:absolute; inset:auto 0 0 0; padding:8px 12px; font-size:14px;
-      color:var(--muted); background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,.6) 60%, rgba(0,0,0,.75) 100%);
-    }
-    .hint{ position:fixed; left:50%; transform:translateX(-50%); bottom:10px; font-size:12px; color:#bbb; opacity:.8; }
-    .hidden{ display:none !important; }
-    .noscript{ display:grid; place-items:center; min-height:100dvh; padding:24px; text-align:center; color:#bbb; }
-    .gate{ position:fixed; inset:0; display:grid; place-items:center; background:rgba(0,0,0,0.85); z-index:9999; }
-    .gate-card{ width:calc(100% - 40px); max-width:420px; background:#0b0b0b; border-radius:12px; padding:18px; box-shadow:0 8px 40px rgba(0,0,0,.6); color:#ddd; }
-    .gate-card label{ display:block; margin-bottom:8px; font-size:14px; color:#bbb; }
-    .gate-card input{ width:100%; padding:10px; border-radius:8px; border:1px solid #222; background:#050505; color:#fff; box-sizing:border-box; }
-    .gate-card button{ margin-top:12px; width:100%; padding:10px; border-radius:8px; border:0; background:#1a73e8; color:white; font-weight:600; }
-    .small{ font-size:12px; color:#999; margin-top:8px; text-align:center; }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Protected Videos</title>
+<style>
+  :root{--bg:#000;--fg:#fff;--muted:#999;}
+  html,body{height:100%}
+  body{
+    margin:0;background:var(--bg);color:var(--fg);
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+    scroll-behavior:smooth; scroll-snap-type:y mandatory; overscroll-behavior-y:none;
+  }
+  .panel{ height:100vh; min-height:100dvh; display:flex; align-items:center; justify-content:center; padding:12px; box-sizing:border-box; scroll-snap-align:start; }
+  .player{ width:100%; max-width:1200px; margin:auto; position:relative; aspect-ratio:16/9; box-shadow:0 10px 30px rgba(0,0,0,.6); border-radius:12px; overflow:hidden; background:#111;}
+  iframe{ width:100%; height:100%; border:0; display:block; }
+  .caption{ position:absolute; inset:auto 0 0 0; padding:8px 12px; font-size:14px; color:var(--muted); background:linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,.55) 60%, rgba(0,0,0,.8) 100%); }
+  .hint{ position:fixed; left:50%; transform:translateX(-50%); bottom:10px; font-size:12px; color:#bbb; opacity:.85; }
+  .hidden{ display:none!important; }
+  .noscript{ display:grid; place-items:center; min-height:100dvh; padding:24px; text-align:center; color:#bbb; }
+  /* password modal */
+  .gate{ position:fixed; inset:0; display:grid; place-items:center; background:rgba(0,0,0,0.88); z-index:9999;}
+  .card{ width:calc(100% - 40px); max-width:420px; background:#0b0b0b; border-radius:10px; padding:18px; color:#eee; box-shadow:0 8px 30px rgba(0,0,0,.6); }
+  label{ display:block; margin-bottom:8px; color:#bbb; font-size:14px;}
+  input{ width:100%; padding:10px; border-radius:8px; border:1px solid #222; background:#050505; color:#fff; box-sizing:border-box;}
+  button{ margin-top:12px; width:100%; padding:10px; border-radius:8px; border:0; background:#1a73e8; color:white; font-weight:600;}
+  .small{ font-size:12px; color:#999; margin-top:8px; text-align:center; }
+</style>
 </head>
 <body>
   <noscript>
     <div class="noscript">
-      Activez JavaScript pour voir les vidéos. Sans JavaScript, vous serez redirigé.
+      JavaScript is required — you will be redirected.
       <meta http-equiv="refresh" content="0; url=https://www.google.com" />
     </div>
   </noscript>
 
   <div id="root"></div>
-  <div class="hint" id="hint">Faites défiler pour passer à la vidéo suivante ▾</div>
+  <div class="hint" id="hint">Scroll to move to the next video ▾</div>
 
-  <!-- JSON : remplace les id/url par tes vidéos -->
+  <!-- Videos list: updated to the two shorts you provided -->
   <script id="videos" type="application/json">[
-    { "id": "dQw4w9WgXcQ", "title": "Vidéo 1" },
     { "url": "https://youtube.com/shorts/dIV0SyLqiVs", "title": "Vidéo 2" },
     { "url": "https://youtube.com/shorts/T-evQX6mpp4", "title": "Vidéo 3" }
   ]</script>
 
-  <!-- AUTH CONFIG : PBKDF2 -> SHA256 reference (généré pour ton nouveau mot de passe) -->
+  <!-- SIMPLE AUTH CONFIG (salted SHA-256). 
+       salt_base64url and reference_hex were generated for your password.
+       If you need to change the password, see comment at bottom for recompute snippet. -->
   <script id="auth-config" type="application/json">
   {
-    "hash": {
-      "salt_base64url": "QWhly65pxUabo8NwMDIMmQ",
-      "iterations": 200000,
-      "reference_hex": "9d4218b80021a992532968f0df7ec74deda02b00da9ffe2745115a8931c8ae36"
-    }
+    "salt_base64url":"X9LtQaHELAPK7FNW",
+    "reference_hex":"7ecedf92ee1127df7c3e74900641527742678186504680722469bc3ef797fbaa"
   }
   </script>
 
-  <!-- Password gate modal -->
+  <!-- password modal -->
   <div class="gate" id="gate">
-    <div class="gate-card" role="dialog" aria-labelledby="gate-title">
-      <div id="gate-title" style="font-size:18px; font-weight:700; margin-bottom:6px;">Accès protégé</div>
-      <label for="pwd">Mot de passe</label>
+    <div class="card" role="dialog" aria-labelledby="title">
+      <div id="title" style="font-size:18px;font-weight:700;margin-bottom:8px">Protected Access</div>
+      <label for="pwd">Password</label>
       <input id="pwd" type="password" autocomplete="current-password" />
-      <button id="btn">Valider</button>
-      <div class="small">Si le mot de passe est incorrect, vous serez redirigé.</div>
+      <button id="btn">Unlock</button>
+      <div class="small">Wrong password → redirected to Google</div>
     </div>
   </div>
 
-  <script>
-  // utils
-  function b64urlToArrayBuffer(b64url){
-    const b64 = b64url.replace(/-/g,'+').replace(/_/g,'/');
-    const pad = b64.length % 4;
-    const s = b64 + (pad ? '='.repeat(4 - pad) : '');
-    const bin = atob(s);
-    const arr = new Uint8Array(bin.length);
-    for(let i=0;i<bin.length;i++) arr[i] = bin.charCodeAt(i);
-    return arr.buffer;
-  }
-  function bufToHex(buf){
-    const u = new Uint8Array(buf);
-    return Array.from(u).map(b => b.toString(16).padStart(2,'0')).join('');
-  }
+<script>
+/* Minimal salted-hash password check (SHA-256 of salt + password).
+   Simple and reliable cross-browser.
+*/
+function b64urlToArrayBuffer(b64url){
+  const b64 = b64url.replace(/-/g,'+').replace(/_/g,'/');
+  const pad = b64.length % 4;
+  const s = b64 + (pad ? '='.repeat(4 - pad) : '');
+  const bin = atob(s);
+  const u = new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i);
+  return u.buffer;
+}
+function bufToHex(buf){
+  const u = new Uint8Array(buf);
+  return Array.from(u).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
 
-  // PBKDF2 deriveBits
-  async function pbkdf2Bits(password, saltBuf, iterations, lengthBits=256){
-    const enc = new TextEncoder();
-    const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), {name:'PBKDF2'}, false, ['deriveBits']);
-    return await crypto.subtle.deriveBits({ name:'PBKDF2', hash:'SHA-256', salt: saltBuf, iterations: iterations }, keyMaterial, lengthBits);
-  }
+async function sha256OfSaltPlusPassword(saltBuf, password){
+  const enc = new TextEncoder();
+  // concatenate salt || password
+  const pwdBuf = enc.encode(password);
+  const saltBytes = new Uint8Array(saltBuf);
+  const concat = new Uint8Array(saltBytes.length + pwdBuf.length);
+  concat.set(saltBytes, 0);
+  concat.set(pwdBuf, saltBytes.length);
+  const digest = await crypto.subtle.digest('SHA-256', concat.buffer);
+  return bufToHex(digest);
+}
 
-  // verify: PBKDF2 -> SHA256 -> compare hex
-  async function verify_password(password, cfg){
-    try{
-      const saltBuf = b64urlToArrayBuffer(cfg.hash.salt_base64url);
-      const derived = await pbkdf2Bits(password, saltBuf, cfg.hash.iterations, 256);
-      const digest = await crypto.subtle.digest('SHA-256', derived);
-      const hex = bufToHex(digest);
-      return hex === cfg.hash.reference_hex;
-    }catch(e){
-      console.warn('verify error', e);
-      return false;
+async function verifyPassword(password, cfg){
+  try{
+    const saltBuf = b64urlToArrayBuffer(cfg.salt_base64url);
+    const hex = await sha256OfSaltPlusPassword(saltBuf, password);
+    return hex === cfg.reference_hex;
+  }catch(e){
+    console.warn('verify error', e);
+    return false;
+  }
+}
+
+/* Gate logic */
+(function(){
+  const cfg = JSON.parse(document.getElementById('auth-config').textContent);
+  const gate = document.getElementById('gate');
+  const btn = document.getElementById('btn');
+  const pwd = document.getElementById('pwd');
+
+  pwd.addEventListener('keypress', e => { if(e.key === 'Enter') btn.click(); });
+
+  btn.addEventListener('click', async () => {
+    const val = pwd.value || '';
+    if(!val){ pwd.focus(); return; }
+    btn.disabled = true; btn.textContent = 'Checking…';
+    const ok = await verifyPassword(val, cfg);
+    if(ok){
+      try{ sessionStorage.setItem('yt_gate_ok', '1'); }catch(e){}
+      gate.style.display = 'none';
+      initPage();
+    } else {
+      location.replace('https://www.google.com');
     }
-  }
+  });
 
-  // Gate logic
-  (function(){
-    const cfg = JSON.parse(document.getElementById('auth-config').textContent);
-    const gateEl = document.getElementById('gate');
-    const btn = document.getElementById('btn');
-    const pwdInput = document.getElementById('pwd');
+  // skip if session already validated
+  try{
+    if(sessionStorage.getItem('yt_gate_ok') === '1'){ gate.style.display = 'none'; initPage(); }
+  }catch(e){}
+})();
 
-    pwdInput.addEventListener('keypress', function(ev){ if(ev.key === 'Enter') btn.click(); });
-    btn.addEventListener('click', async function(){
-      const pwd = pwdInput.value || '';
-      if(!pwd){ pwdInput.focus(); return; }
-      // set a small UX hint while computing
-      btn.disabled = true;
-      btn.textContent = 'Vérification…';
-      const ok = await verify_password(pwd, cfg);
-      if(ok){
-        try{ sessionStorage.setItem('yt_gate_ok','1'); }catch(e){}
-        gateEl.style.display = 'none';
-        initPage();
-      }else{
-        // redirect on failure
-        location.replace('https://www.google.com');
-      }
-    });
+/* Page builder: one video per screen, lazy load via IntersectionObserver */
+function initPage(){
+  const root = document.getElementById('root');
+  const data = document.getElementById('videos');
+  let list = [];
+  try{ list = JSON.parse(data.textContent.trim()); }catch(e){ list=[]; }
 
-    // skip gate if session ok
-    try{
-      if(sessionStorage.getItem('yt_gate_ok') === '1'){
-        gateEl.style.display = 'none';
-        initPage();
-      }
-    }catch(e){}
-  })();
-
-  // Page builder (identique à avant)
-  function initPage(){
-    const root = document.getElementById('root');
-    const dataEl = document.getElementById('videos');
-    let list = [];
-    try{ list = JSON.parse(dataEl.textContent.trim()); }catch(e){ list = []; }
-
-    function toId(entry){
-      if(entry.id) return entry.id;
-      if(entry.url){
-        try{
-          const u = new URL(entry.url);
-          if(u.hostname.includes('youtu.be')) return u.pathname.slice(1);
-          if(u.searchParams.get('v')) return u.searchParams.get('v');
-        }catch(e){ return null; }
-      }
-      return null;
-    }
-
-    list = (Array.isArray(list)?list:[]).map(x => ({ id: toId(x), title: x.title||'' })).filter(x => !!x.id);
-
-    if(list.length === 0){
-      root.innerHTML = '<div class="panel"><div style="color:#bbb">Aucune vidéo valide dans la liste.</div></div>';
-      return;
-    }
-
-    list.forEach(function(v, idx){
-      const panel = document.createElement('section');
-      panel.className = 'panel';
-      const player = document.createElement('div');
-      player.className = 'player';
-      const iframe = document.createElement('iframe');
-      iframe.setAttribute('title', v.title || ('YouTube '+(idx+1)));
-      iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share');
-      iframe.setAttribute('referrerpolicy','strict-origin-when-cross-origin');
-      iframe.setAttribute('loading','lazy');
-      const embed = 'https://www.youtube.com/embed/' + encodeURIComponent(v.id) + '?rel=0&modestbranding=1&playsinline=1';
-      iframe.dataset.src = embed;
-      const caption = document.createElement('div');
-      caption.className = 'caption';
-      caption.textContent = v.title || '';
-      player.appendChild(iframe);
-      player.appendChild(caption);
-      panel.appendChild(player);
-      root.appendChild(panel);
-    });
-
-    const io = ('IntersectionObserver' in window) ? new IntersectionObserver(function(entries){
-      entries.forEach(function(entry){
-        if(entry.isIntersecting){
-          const ifr = entry.target.querySelector('iframe');
-          if(ifr && !ifr.src) ifr.src = ifr.dataset.src;
+  function toId(entry){
+    if(entry.id) return entry.id;
+    if(entry.url){
+      try{
+        const u = new URL(entry.url);
+        if(u.hostname.includes('youtu.be')) return u.pathname.slice(1);
+        // handle /shorts/<id>
+        if(u.pathname && u.pathname.startsWith('/shorts/')){
+          const parts = u.pathname.split('/');
+          if(parts.length >= 3) return parts[2];
         }
-      });
-    }, { root:null, rootMargin:'200px 0px', threshold:0.1 }) : null;
-
-    if(io){
-      document.querySelectorAll('.panel').forEach(p => io.observe(p));
-    }else{
-      document.querySelectorAll('iframe').forEach(ifr => { if(!ifr.src) ifr.src = ifr.dataset.src; });
+        if(u.searchParams.get('v')) return u.searchParams.get('v');
+      }catch(e){ return null; }
     }
-
-    const hint = document.getElementById('hint');
-    let hiddenOnce = false;
-    window.addEventListener('scroll', function(){ if(!hiddenOnce){ hiddenOnce=true; hint.classList.add('hidden'); } }, {passive:true});
-    setTimeout(() => hint.classList.add('hidden'), 4000);
+    return null;
   }
-  </script>
+
+  list = (Array.isArray(list)?list:[]).map(x => ({ id: toId(x), title: x.title||'' })).filter(x=>!!x.id);
+
+  if(list.length===0){
+    root.innerHTML = '<div class="panel"><div style="color:#bbb">No videos configured.</div></div>';
+    return;
+  }
+
+  list.forEach((v, idx) => {
+    const section = document.createElement('section'); section.className='panel';
+    const player = document.createElement('div'); player.className='player';
+    const iframe = document.createElement('iframe');
+    iframe.setAttribute('title', v.title || ('Video '+(idx+1)));
+    iframe.setAttribute('allow','accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share');
+    iframe.setAttribute('referrerpolicy','strict-origin-when-cross-origin');
+    iframe.setAttribute('loading','lazy');
+    iframe.dataset.src = 'https://www.youtube.com/embed/' + encodeURIComponent(v.id) + '?rel=0&modestbranding=1&playsinline=1';
+    const caption = document.createElement('div'); caption.className='caption'; caption.textContent = v.title || '';
+    player.appendChild(iframe); player.appendChild(caption);
+    section.appendChild(player); root.appendChild(section);
+  });
+
+  const io = ('IntersectionObserver' in window) ? new IntersectionObserver(entries=>{
+    entries.forEach(entry=>{
+      if(entry.isIntersecting){
+        const ifr = entry.target.querySelector('iframe');
+        if(ifr && !ifr.src) ifr.src = ifr.dataset.src;
+      }
+    });
+  }, {root:null, rootMargin:'200px 0px', threshold:0.1}) : null;
+
+  if(io) document.querySelectorAll('.panel').forEach(p=>io.observe(p));
+  else document.querySelectorAll('iframe').forEach(ifr=>{ if(!ifr.src) ifr.src=ifr.dataset.src; });
+
+  const hint = document.getElementById('hint'); let h=false;
+  window.addEventListener('scroll', ()=>{ if(!h){ h=true; hint.classList.add('hidden'); } }, {passive:true});
+  setTimeout(()=>hint.classList.add('hidden'), 4000);
+}
+</script>
+
+<!-- QUICK NOTE:
+  To change the password locally and compute a new reference_hex:
+  1) Open devtools Console on any page (or run in node).
+  2) Run this (replace NEWPASS):
+     (async()=>{
+       const salt = 'X9LtQaHELAPK7FNW';
+       const enc = new TextEncoder();
+       const saltBuf = (function(b64){ const b = atob(b64.replace(/-/g,'+').replace(/_/g,'/')); const u=new Uint8Array(b.length); for(let i=0;i<b.length;i++) u[i]=b.charCodeAt(i); return u; }) (salt);
+       const pwd = 'NEWPASS';
+       const concat = new Uint8Array(saltBuf.length + enc.encode(pwd).length);
+       concat.set(new Uint8Array(saltBuf),0);
+       concat.set(enc.encode(pwd), saltBuf.length);
+       const d = await crypto.subtle.digest('SHA-256', concat.buffer);
+       const hex = Array.from(new Uint8Array(d)).map(b=>b.toString(16).padStart(2,'0')).join('');
+       console.log(hex);
+     })();
+  3) Replace reference_hex in the auth-config above with the printed hex.
+-->
 </body>
 </html>
