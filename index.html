@@ -1,1 +1,314 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Vidéos protégées</title>
+  <style>
+    :root { --bg:#000; --fg:#fff; --muted:#999; }
+    html,body{ height:100%; }
+    body{
+      margin:0; background:var(--bg); color:var(--fg);
+      font-family: system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;
+      scroll-behavior:smooth;
+      scroll-snap-type: y mandatory;
+      overscroll-behavior-y: none;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    .panel{
+      height:100vh; min-height:100dvh;
+      display:flex; align-items:center; justify-content:center;
+      padding: 12px; box-sizing:border-box;
+      scroll-snap-align:start;
+    }
+    .player{
+      width:100%; max-width:1200px; margin:auto; position:relative;
+      aspect-ratio:16/9;
+      box-shadow: 0 10px 30px rgba(0,0,0,.6);
+      border-radius:16px; overflow:hidden; background:#111;
+    }
+    iframe{ width:100%; height:100%; border:0; display:block; }
+    .caption{
+      position:absolute; inset:auto 0 0 0; padding:8px 12px; font-size:14px;
+      color:var(--muted); background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,.6) 60%, rgba(0,0,0,.75) 100%);
+    }
+    .hint{ position:fixed; left:50%; transform:translateX(-50%); bottom:10px; font-size:12px; color:#bbb; opacity:.8; }
+    .hidden{ display:none !important; }
+    .noscript{ display:grid; place-items:center; min-height:100dvh; padding:24px; text-align:center; color:#bbb; }
+    /* simple modal for password */
+    .gate{
+      position:fixed; inset:0; display:grid; place-items:center; background:rgba(0,0,0,0.85); z-index:9999;
+    }
+    .gate-card{
+      width:calc(100% - 40px); max-width:420px; background:#0b0b0b; border-radius:12px; padding:18px; box-shadow:0 8px 40px rgba(0,0,0,.6); color:#ddd;
+    }
+    .gate-card label{ display:block; margin-bottom:8px; font-size:14px; color:#bbb; }
+    .gate-card input{ width:100%; padding:10px; border-radius:8px; border:1px solid #222; background:#050505; color:#fff; box-sizing:border-box; }
+    .gate-card button{ margin-top:12px; width:100%; padding:10px; border-radius:8px; border:0; background:#1a73e8; color:white; font-weight:600; }
+    .small{ font-size:12px; color:#999; margin-top:8px; text-align:center; }
+  </style>
+</head>
+<body>
+  <noscript>
+    <div class="noscript">
+      Activez JavaScript pour voir les vidéos. Sans JavaScript, vous serez redirigé.
+      <meta http-equiv="refresh" content="0; url=https://www.google.com" />
+    </div>
+  </noscript>
+
+  <div id="root"></div>
+  <div class="hint" id="hint">Faites défiler pour passer à la vidéo suivante ▾</div>
+
+  <!-- JSON : remplace les id/url par tes vidéos -->
+  <script id="videos" type="application/json">[
+    { "id": "dQw4w9WgXcQ", "title": "Vidéo 1" },
+    { "url": "https://youtube.com/shorts/dIV0SyLqiVs", "title": "Vidéo 2" }
+    { "url": "https://youtube.com/shorts/T-evQX6mpp4", "title": "Vidéo 3" }
+  ]</script>
+
+  <!--
+    CONFIGURATION CRYPTO (généré pour le mot de passe que tu as fourni)
+    - pubkey.x / pubkey.y : base64url (P-256)
+    - pubkey.salt_base64 : salt (base64url)
+    - iterations : PBKDF2 iterations
+    - fallback.hash.reference_hex : fallback reference SHA-256 hex of PBKDF2 output
+  -->
+  <script id="auth-config" type="application/json">
+  {
+    "pubkey": {
+      "x": "HGc1x4f8kPLL8h6eEkXQLpfvdO3Pyhlvnfh3s2omlic",
+      "y": "ZeQ1qD2dOqoDfsFoyvqC8i2HIC-kizxnahH2S00Zr-Q",
+      "salt_base64": "2iwXqyeKyOFtXiWV3zy8ew"
+    },
+    "iterations": 200000,
+    "fallback": {
+      "hash": {
+        "salt_base64": "2iwXqyeKyOFtXiWV3zy8ew",
+        "iterations": 200000,
+        "reference_hex": "ceca69643504e2c82980097504d117e31e2deda401594a00a5e56406a39e1a7a"
+      }
+    }
+  }
+  </script>
+
+  <!-- Password gate modal -->
+  <div class="gate" id="gate">
+    <div class="gate-card" role="dialog" aria-labelledby="gate-title">
+      <div id="gate-title" style="font-size:18px; font-weight:700; margin-bottom:6px;">Accès protégé</div>
+      <label for="pwd">Mot de passe</label>
+      <input id="pwd" type="password" autocomplete="current-password" />
+      <button id="btn">Valider</button>
+      <div class="small">Si le mot de passe est incorrect, vous serez redirigé.</div>
+    </div>
+  </div>
+
+  <script>
+  // -----------------------
+  // Utilitaires base64url / buffer
+  // -----------------------
+  function b64urlToArrayBuffer(b64url){
+    // convert base64url to base64
+    const b64 = b64url.replace(/-/g,'+').replace(/_/g,'/');
+    // pad
+    const pad = b64.length % 4;
+    const s = b64 + (pad ? '='.repeat(4 - pad) : '');
+    const bin = atob(s);
+    const len = bin.length;
+    const arr = new Uint8Array(len);
+    for(let i=0;i<len;i++) arr[i] = bin.charCodeAt(i);
+    return arr.buffer;
+  }
+  function arrayBufferToBase64Url(buf){
+    const bytes = new Uint8Array(buf);
+    let str = '';
+    for(let i=0;i<bytes.length;i++) str += String.fromCharCode(bytes[i]);
+    const b64 = btoa(str);
+    return b64.replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  }
+  function bufToHex(buf){
+    const u = new Uint8Array(buf);
+    return Array.from(u).map(b => b.toString(16).padStart(2,'0')).join('');
+  }
+
+  // -----------------------
+  // PBKDF2 deriveBits helper
+  // -----------------------
+  async function pbkdf2Bits(password, saltBuf, iterations, lengthBits=256){
+    const enc = new TextEncoder();
+    const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), {name:'PBKDF2'}, false, ['deriveBits']);
+    const bits = await crypto.subtle.deriveBits({ name:'PBKDF2', hash:'SHA-256', salt: saltBuf, iterations: iterations }, keyMaterial, lengthBits);
+    return bits; // ArrayBuffer
+  }
+
+  // -----------------------
+  // verify via asymmetric derivation (P-256)
+  // -----------------------
+  async function verify_pubkey_method(password, cfg){
+    try{
+      const saltBuf = b64urlToArrayBuffer(cfg.pubkey.salt_base64);
+      const bits = await pbkdf2Bits(password, saltBuf, cfg.iterations, 256); // 32 bytes
+      const d_b64url = arrayBufferToBase64Url(bits);
+
+      // Build private JWK (minimal)
+      const jwkPriv = { kty: "EC", crv: "P-256", d: d_b64url };
+
+      // Import private key; note: browsers may require 'sign' usage.
+      // Then export public JWK and compare coords.
+      const priv = await crypto.subtle.importKey("jwk", jwkPriv, { name: "ECDSA", namedCurve: "P-256" }, true, ["sign"]);
+      const pub = await crypto.subtle.exportKey("jwk", priv);
+
+      if(!pub.x || !pub.y){ console.warn('exportKey did not return public coords'); return false; }
+      // compare base64url strings
+      if(pub.x === cfg.pubkey.x && pub.y === cfg.pubkey.y) return true;
+      return false;
+
+    }catch(e){
+      console.warn('verify_pubkey_method error', e);
+      return false;
+    }
+  }
+
+  // -----------------------
+  // fallback: PBKDF2 -> SHA-256 hex comparison
+  // -----------------------
+  async function verify_hash_method(password, fallbackCfg){
+    try{
+      const saltBuf = b64urlToArrayBuffer(fallbackCfg.hash.salt_base64);
+      const iters = fallbackCfg.hash.iterations;
+      const derived = await pbkdf2Bits(password, saltBuf, iters, 256);
+      const digest = await crypto.subtle.digest('SHA-256', derived);
+      const hex = bufToHex(digest);
+      return hex === fallbackCfg.hash.reference_hex;
+    }catch(e){
+      console.warn('verify_hash_method error', e);
+      return false;
+    }
+  }
+
+  // -----------------------
+  // Gate logic
+  // -----------------------
+  (function(){
+    const cfg = JSON.parse(document.getElementById('auth-config').textContent);
+    const gateEl = document.getElementById('gate');
+    const btn = document.getElementById('btn');
+    const pwdInput = document.getElementById('pwd');
+
+    // Allow pressing Enter
+    pwdInput.addEventListener('keypress', function(ev){ if(ev.key === 'Enter') btn.click(); });
+
+    btn.addEventListener('click', async function(){
+      const pwd = pwdInput.value || '';
+      if(!pwd){ pwdInput.focus(); return; }
+
+      // try asymmetric method
+      let ok = false;
+      try{
+        ok = await verify_pubkey_method(pwd, cfg);
+      }catch(e){ ok = false; }
+
+      if(!ok){
+        // fallback
+        try{
+          ok = await verify_hash_method(pwd, cfg.fallback);
+        }catch(e){ ok = false; }
+      }
+
+      if(ok){
+        // open page: hide gate and continue
+        gateEl.style.display = 'none';
+        initPage(); // build the video panels
+      }else{
+        // redirect to google
+        location.replace('https://www.google.com');
+      }
+    });
+
+    // If session already ok in sessionStorage, skip gate
+    try{
+      if(sessionStorage.getItem('yt_gate_ok') === '1'){
+        gateEl.style.display = 'none';
+        initPage();
+      }
+    }catch(e){}
+  })();
+
+  // -----------------------
+  // Page builder: videos + lazy load + scroll snap
+  // -----------------------
+  function initPage(){
+    const root = document.getElementById('root');
+    const dataEl = document.getElementById('videos');
+    let list = [];
+    try{ list = JSON.parse(dataEl.textContent.trim()); }catch(e){ list = []; }
+
+    function toId(entry){
+      if(entry.id) return entry.id;
+      if(entry.url){
+        try{
+          const u = new URL(entry.url);
+          if(u.hostname.includes('youtu.be')) return u.pathname.slice(1);
+          if(u.searchParams.get('v')) return u.searchParams.get('v');
+        }catch(e){ return null; }
+      }
+      return null;
+    }
+
+    list = (Array.isArray(list)?list:[]).map(x => ({ id: toId(x), title: x.title||'' })).filter(x => !!x.id);
+
+    if(list.length === 0){
+      root.innerHTML = '<div class="panel"><div style="color:#bbb">Aucune vidéo valide dans la liste.</div></div>';
+      return;
+    }
+
+    list.forEach(function(v, idx){
+      const panel = document.createElement('section');
+      panel.className = 'panel';
+      const player = document.createElement('div');
+      player.className = 'player';
+      const iframe = document.createElement('iframe');
+      iframe.setAttribute('title', v.title || ('YouTube '+(idx+1)));
+      iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share');
+      iframe.setAttribute('referrerpolicy','strict-origin-when-cross-origin');
+      iframe.setAttribute('loading','lazy');
+      const embed = 'https://www.youtube.com/embed/' + encodeURIComponent(v.id) + '?rel=0&modestbranding=1&playsinline=1';
+      iframe.dataset.src = embed;
+      const caption = document.createElement('div');
+      caption.className = 'caption';
+      caption.textContent = v.title || '';
+      player.appendChild(iframe);
+      player.appendChild(caption);
+      panel.appendChild(player);
+      root.appendChild(panel);
+    });
+
+    // IntersectionObserver lazy load
+    const io = ('IntersectionObserver' in window) ? new IntersectionObserver(function(entries){
+      entries.forEach(function(entry){
+        if(entry.isIntersecting){
+          const ifr = entry.target.querySelector('iframe');
+          if(ifr && !ifr.src) ifr.src = ifr.dataset.src;
+        }
+      });
+    }, { root:null, rootMargin:'200px 0px', threshold:0.1 }) : null;
+
+    if(io){
+      document.querySelectorAll('.panel').forEach(p => io.observe(p));
+    }else{
+      document.querySelectorAll('iframe').forEach(ifr => { if(!ifr.src) ifr.src = ifr.dataset.src; });
+    }
+
+    // hide hint after scroll
+    const hint = document.getElementById('hint');
+    let hiddenOnce = false;
+    window.addEventListener('scroll', function(){ if(!hiddenOnce){ hiddenOnce=true; hint.classList.add('hidden'); } }, {passive:true});
+    setTimeout(() => hint.classList.add('hidden'), 4000);
+
+    // mark session ok
+    try{ sessionStorage.setItem('yt_gate_ok', '1'); }catch(e){}
+  }
+  </script>
+</body>
+</html>
 
