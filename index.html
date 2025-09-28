@@ -16,7 +16,6 @@
   .wrap{ width:100%; max-width:1200px; margin:auto; }
   .player{ position:relative; width:100%; aspect-ratio:16/9; box-shadow:0 10px 30px rgba(0,0,0,.6); border-radius:12px; overflow:hidden; background:#111; }
   iframe{ width:100%; height:100%; border:0; display:block; }
-  /* label now OUTSIDE the video; never blocks controls */
   .label{ margin-top:8px; font-size:14px; color:var(--muted); }
   .hint{ position:fixed; left:50%; transform:translateX(-50%); bottom:10px; font-size:12px; color:#bbb; opacity:.85; }
   .hidden{ display:none!important; }
@@ -44,21 +43,33 @@
 
   <!-- Videos list -->
   <script id="videos" type="application/json">[
-    { "url": "https://www.youtube.com/watch?v=XpPmaNxzkOg", "title": "0" }
+    { "url": "https://www.youtube.com/shorts/pqe4S4325q8", "title": "0" },
     { "url": "https://www.youtube.com/watch?v=27cA9ptT6QE", "title": "1" },
-    { "url": "https://www.youtube.com/watch?v=oCnotRXfR_M", "title": "2" },
-    { "url": "https://www.youtube.com/watch?v=rc4fype-Mo8", "title": "3" }, 
-    { "url": "https://youtube.com/shorts/dIV0SyLqiVs", "title": "4" },
-    { "url": "https://youtu.be/wS4D4Z1_5LQ", "title": "5" },
-    { "url": "https://youtu.be/gAVs4er6kn0", "title": "6" },
-    { "url": "https://youtu.be/A8w2OR2xGj4", "title": "7" },
-    { "url": "https://youtu.be/hsFsDTObQAU", "title": "8" },
-    { "url": "https://youtube.com/shorts/t-opht7pIUI?feature=share", "title": "9" },
-    { "url": "https://youtube.com/shorts/cS82Yr76OAM?feature=share", "title": "10" },
-    { "url": "https://youtube.com/shorts/fhxjJ8h7fSk?feature=share", "title": "11" },
-     { "url": "https://youtube.com/shorts/27keArNQ4wc?feature=share", "title": "12" },
-    { "url": "https://www.youtube.com/watch?v=b0a6M5SaQQM", "title": "13" },
+    { "url": "https://www.youtube.com/watch?v=daTJMhWTxTs", "title": "2" },
+    { "url": "https://www.youtube.com/watch?v=oCnotRXfR_M", "title": "3" },
+    { "url": "https://www.youtube.com/watch?v=rc4fype-Mo8", "title": "4" },
+    { "url": "https://youtube.com/shorts/dIV0SyLqiVs", "title": "5" },
+    { "url": "https://www.youtube.com/watch?v=_WU_fdDpeLw", "title": "6" },
+    { "url": "https://www.youtube.com/watch?v=5D0tWISEvn0", "title": "7" },
+    { "url": "https://youtu.be/wS4D4Z1_5LQ", "title": "8" },
+    { "url": "https://youtu.be/gAVs4er6kn0", "title": "9" },
+    { "url": "https://youtu.be/A8w2OR2xGj4", "title": "10" },
+    { "url": "https://youtu.be/hsFsDTObQAU", "title": "11" },
+    { "url": "https://youtube.com/shorts/t-opht7pIUI?feature=share", "title": "12" },
+    { "url": "https://youtube.com/shorts/cS82Yr76OAM?feature=share", "title": "13" },
+    { "url": "https://youtube.com/shorts/fhxjJ8h7fSk?feature=share", "title": "14" },
+    { "url": "https://youtube.com/shorts/27keArNQ4wc?feature=share", "title": "15" },
+    { "url": "https://www.youtube.com/watch?v=b0a6M5SaQQM", "title": "16" },
+    { "url": "https://www.facebook.com/reel/2261531724322163", "title": "FB reel" },
+    { "url": "https://www.facebook.com/reel/704439259299017", "title": "FB reel" },
+    { https://www.facebook.com/reel/800437302387247", "title": "FB reel" },
+    { "url": "https://www.facebook.com/61581175712529/videos/1292717129011948", "title": "FB reel" },
+    { "https://www.facebook.com/watch?v=1125590846371845", "title": "FB reel" },
     { "url": "https://youtube.com/shorts/T-evQX6mpp4", "title": "end" }
+    /* You can also add:
+       { "url": "https://www.facebook.com/reel/2261531724322163", "title": "FB reel" }
+       or fb.watch short links, or normal video URLs on Pages.
+    */
   ]</script>
 
   <!-- SIMPLE AUTH CONFIG (salted SHA-256) -->
@@ -81,7 +92,10 @@
   </div>
 
 <script>
-/* Minimal salted-hash password check (SHA-256 of salt + password). */
+/* === Feature flag === */
+const PASSWORD_REQUIRED = false; // set false to skip the gate
+
+/* === Utils (hash) === */
 function b64urlToArrayBuffer(b64url){
   const b64 = b64url.replace(/-/g,'+').replace(/_/g,'/');
   const pad = b64.length % 4;
@@ -116,10 +130,77 @@ async function verifyPassword(password, cfg){
   }
 }
 
-/* Gate logic */
+/* === Platform detect + embed builders === */
+function detectPlatform(urlStr){
+  try{
+    const u = new URL(urlStr);
+    const h = u.hostname.toLowerCase();
+    if (h.includes('youtube.com') || h.includes('youtu.be')) return 'youtube';
+    if (h.includes('facebook.com') || h.includes('fb.watch')) return 'facebook';
+  }catch(e){}
+  return null;
+}
+function extractYouTubeId(urlStr){
+  try{
+    const u = new URL(urlStr);
+    if (u.hostname.includes('youtu.be')) return u.pathname.slice(1);
+    if (u.pathname.startsWith('/shorts/')){
+      const parts = u.pathname.split('/');
+      if (parts.length >= 3) return parts[2];
+    }
+    if (u.searchParams.get('v')) return u.searchParams.get('v');
+  }catch(e){}
+  return null;
+}
+function buildEmbed(entry){
+  const url = entry.url || '';
+  const platform = detectPlatform(url);
+  if (platform === 'youtube'){
+    const id = entry.id || extractYouTubeId(url);
+    if (!id) return null;
+    const params = new URLSearchParams({
+      rel: '0', modestbranding: '1', playsinline: '1', controls: '1', iv_load_policy: '3'
+    });
+    return {
+      platform,
+      src: `https://www.youtube.com/embed/${encodeURIComponent(id)}?${params.toString()}`,
+      titleSuffix: 'YouTube'
+    };
+  }
+  if (platform === 'facebook'){
+    // Works for public videos/reels/pages. Private content won’t render.
+    try{
+      const href = encodeURIComponent(new URL(url).toString());
+      const params = new URLSearchParams({
+        href,
+        show_text: '0',
+        width: '1280',
+        height: '720',
+        allowfullscreen: 'true'
+      });
+      return {
+        platform,
+        src: `https://www.facebook.com/plugins/video.php?${params.toString()}`,
+        titleSuffix: 'Facebook'
+      };
+    }catch(e){
+      return null;
+    }
+  }
+  return null;
+}
+
+/* === Gate logic with toggle === */
 (function(){
-  const cfg = JSON.parse(document.getElementById('auth-config').textContent);
   const gate = document.getElementById('gate');
+
+  if (!PASSWORD_REQUIRED){
+    if(gate) gate.style.display = 'none';
+    initPage();
+    return;
+  }
+
+  const cfg = JSON.parse(document.getElementById('auth-config').textContent);
   const btn = document.getElementById('btn');
   const pwd = document.getElementById('pwd');
 
@@ -144,58 +225,50 @@ async function verifyPassword(password, cfg){
   }catch(e){}
 })();
 
-/* Page builder: one video per screen, lazy load via IntersectionObserver */
+/* === Page builder === */
 function initPage(){
   const root = document.getElementById('root');
   const data = document.getElementById('videos');
   let list = [];
   try{ list = JSON.parse(data.textContent.trim()); }catch(e){ list=[]; }
 
-  function toId(entry){
-    if(entry.id) return entry.id;
-    if(entry.url){
-      try{
-        const u = new URL(entry.url);
-        if(u.hostname.includes('youtu.be')) return u.pathname.slice(1);
-        if(u.pathname && u.pathname.startsWith('/shorts/')){
-          const parts = u.pathname.split('/');
-          if(parts.length >= 3) return parts[2];
-        }
-        if(u.searchParams.get('v')) return u.searchParams.get('v');
-      }catch(e){ return null; }
-    }
-    return null;
-  }
+  // Keep original entries untouched; compute embed beside them
+  const normalized = (Array.isArray(list)?list:[]).map((x, idx) => {
+    const embed = buildEmbed(x || {});
+    return { ...x, __embed: embed, __idx: idx };
+  }).filter(v => v.__embed && v.__embed.src);
 
-  list = (Array.isArray(list)?list:[]).map(x => ({ id: toId(x), title: x.title||'' })).filter(x=>!!x.id);
-
-  if(list.length===0){
-    root.innerHTML = '<div class="panel"><div style="color:#bbb">No videos configured.</div></div>';
+  if(normalized.length===0){
+    root.innerHTML = '<div class="panel"><div style="color:#bbb">No embeddable videos found.</div></div>';
     return;
   }
 
-  list.forEach((v, idx) => {
+  normalized.forEach(v => {
     const section = document.createElement('section'); section.className='panel';
     const wrap = document.createElement('div'); wrap.className='wrap';
     const player = document.createElement('div'); player.className='player';
     const iframe = document.createElement('iframe');
-    iframe.setAttribute('title', v.title || ('Video '+(idx+1)));
+
+    const safeTitle = (v.title && String(v.title).trim())
+      ? String(v.title).trim()
+      : `${v.__embed.titleSuffix} video ${v.__idx + 1}`;
+
+    iframe.setAttribute('title', safeTitle);
     iframe.setAttribute('allow','accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share');
     iframe.setAttribute('referrerpolicy','strict-origin-when-cross-origin');
     iframe.setAttribute('loading','lazy');
+    iframe.setAttribute('allowfullscreen','true');
 
-    // Captions/labels removed from overlay (no obstruction).
-    // Keep only for accessibility and optional below-player text.
-    iframe.dataset.src =
-      'https://www.youtube.com/embed/' + encodeURIComponent(v.id) +
-      '?rel=0&modestbranding=1&playsinline=1&controls=1&iv_load_policy=3';
+    iframe.dataset.src = v.__embed.src; // lazy
 
     player.appendChild(iframe);
+
     const label = document.createElement('div');
     label.className = 'label';
-    label.textContent = v.title || '';
+    label.textContent = (v.title && String(v.title).trim()) ? String(v.title).trim() : '';
+
     wrap.appendChild(player);
-    if(label.textContent.trim()) wrap.appendChild(label);
+    if(label.textContent) wrap.appendChild(label);
     section.appendChild(wrap);
     root.appendChild(section);
   });
@@ -219,22 +292,8 @@ function initPage(){
 </script>
 
 <!-- QUICK NOTE:
-  To change the password locally and compute a new reference_hex:
-  1) Open devtools Console on any page (or run in node).
-  2) Run this (replace NEWPASS):
-     (async()=>{
-       const salt = 'X9LtQaHELAPK7FNW';
-       const enc = new TextEncoder();
-       const saltBuf = (function(b64){ const b = atob(b64.replace(/-/g,'+').replace(/_/g,'/')); const u=new Uint8Array(b.length); for(let i=0;i<b.length;i++) u[i]=b.charCodeAt(i); return u; }) (salt);
-       const pwd = 'NEWPASS';
-       const concat = new Uint8Array(saltBuf.length + enc.encode(pwd).length);
-       concat.set(new Uint8Array(saltBuf),0);
-       concat.set(enc.encode(pwd), saltBuf.length);
-       const d = await crypto.subtle.digest('SHA-256', concat.buffer);
-       const hex = Array.from(new Uint8Array(d)).map(b=>b.toString(16).padStart(2,'0')).join('');
-       console.log(hex);
-     })();
-  3) Replace reference_hex in the auth-config above with the printed hex.
+  Facebook embeds only render for PUBLIC videos/reels/pages. If a reel is private or age/region-gated, the plugin shows nothing.
+  To change the password hash, use the snippet you already have.
 -->
 </body>
 </html>
